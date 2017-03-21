@@ -18,11 +18,8 @@ n = size(X{1}, 2);
 sigma = zeros(v, 1);
 for i=1:v,
     D = pdist2(X{i}', X{i}', para.distance);
-    
-    d = zeros(n, 1);
-    for j=1:n,
-        t = sort(D(j, :));
-        d(j) = t(k+1);
-    end
-    sigma(i) = mean(d .* d);
+    D = sort(D, 2);
+    sigma(i) = mean(D(:, k+1) .^ 2);
+end
+
 end

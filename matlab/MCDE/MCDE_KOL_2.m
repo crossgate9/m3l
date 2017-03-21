@@ -20,10 +20,27 @@ function W = MCDE_KOL_2(X,L,para)
 % matrix of the original data from the v-th modality.
 
 %% initialization
+V = length(X);
+n = size(L,2);
 
-if ~isfield(para,'sigma')
-    para.sigma = 1;
+% validate size of each view, and
+% make sure each view has same data type
+for i=1:V,
+    if size(X{i}, 2) ~= n,
+        error(message('View matrix size does not match.'))
+    end
+    X{i} = double(X{i});
 end
+
+% validate sigma
+if ~isfield(para,'sigma')
+    para.sigma = ones(V, 1);
+end
+
+if length(para.sigma) ~= V,
+    error(message('Sigma length does not match.'));
+end
+para.sigma = double(para.sigma);
 
 if ~isfield(para,'alpha')
     para.alpha = 1;
@@ -33,9 +50,6 @@ if ~isfield(para,'beta')
     para.beta = 1;
 end
 
-V = length(X);
-n = size(L,2);
-
 %% Geometry Preserving%%
 N = cell(1, V); % Neighborhood Graph Matrix
 S_l = cell(1, V); % Locality Matrix
@@ -43,7 +57,7 @@ S_g = cell(1, V); % Globality Matrix
 NG_sum = zeros(n,n);
 for v = 1:V 
     NG = L2_distance(X{v}, X{v}, 1);
-    NG = - (NG .* NG) / (2 * para.sigma);
+    NG = - (NG .* NG) / (2 * para.sigma(v));
     N{v} = exp(NG);
 
 %     S_l{v} = zeros(size(X{v},1), size(X{v},1));
