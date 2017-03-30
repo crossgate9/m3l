@@ -19,6 +19,9 @@ sigma = zeros(v, 1);
 for i=1:v,
     D = pdist2(X{i}', X{i}', para.distance);
     D = sort(D, 2);
+    if k+1 > size(D, 1),
+        k = size(D, 1) - 1;
+    end
     sigma(i) = mean(D(:, k+1) .^ 2);
 end
 

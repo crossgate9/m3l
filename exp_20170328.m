@@ -13,15 +13,20 @@ for i=1:4,
     options.percent = percent_(i);
     
     for j=1:n,
-        options.dimension = dimension(i);
-        options.knn = dimension(i);
+        options.dimension = dimension(j);
+        options.knn = knn(j);
         options.drfun = drfun;
         options
         if flag,
             flag = false;
             R = exp_acmmm(X, L, options);
+            R.f
             options.train = R.train.raw;
             options.test = R.test.raw;
+            options.train_label = R.train.label;
+            options.test_label = R.test.label;
+            options.train_logical = R.train.logical;
+            options.test_logical = R.test.logical;
             continue;
         end
         R = exp_acmmm(X, L, options);

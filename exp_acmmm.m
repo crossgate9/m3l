@@ -34,6 +34,10 @@ if isfield(para, 'train') && isfield(para, 'test'),
     % load existed data
     train = para.train;
     test = para.test;
+    train_label = para.train_label;
+    test_label = para.test_label;
+    train_logical = para.train_logical;
+    test_logical = para.test_logical;
     V = length(train);
 else
     % re-construct data
@@ -89,10 +93,11 @@ else
     train = cell(V, 1);
     test = cell(V, 1);
     for i=1:V,
-        fprintf('%d\n', i);
         if bow(i) ~= 1,
             train{i} = D{i}(train_logical, :);
             test{i} = D{i}(test_logical, :);
+            train{i} = train{i}';
+            test{i} = test{i}';
             continue;
         end
 
@@ -134,7 +139,13 @@ else
             [~, f] = sort(d, 2);
             test{i}(j, 1:numel(f(:, 1))) = f(:, 1);
         end
+        
+        train{i} = train{i}';
+        test{i} = test{i}';
     end
+    
+    train_label = L(:, train_logical);
+    test_label = L(:, test_logical);
 end
 %% main
 
@@ -142,8 +153,6 @@ end
 train_normalized = cell(V, 1);
 test_normalized = cell(V, 1);
 for i = 1:V,
-    train{i} = train{i}';
-    test{i} = test{i}';
     [train_normalized{i}, test_normalized{i}] = ...
         normalize_train_test(train{i}, test{i});
 %     train_normalized{i} = train_normalized{i}';
@@ -153,9 +162,6 @@ end
 options = [];
 options.distance = 'euclidean';
 options.sigma = MCDE_sigma(train_normalized, 10, options);
-
-train_label = L(:, train_logical);
-test_label = L(:, test_logical);
 
 % reduced weight matrix
 W = [];
