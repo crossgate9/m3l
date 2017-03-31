@@ -1,4 +1,4 @@
-percent_ = [0.01 0.02 0.05 0.1];
+percent_ = [0.1];
 dimension_ = [1 2 3 4 5 6 7 8 9 10];
 knn_ = [1 2 3 4 5];
 
@@ -7,10 +7,15 @@ knn_ = [1 2 3 4 5];
 drfun = 'MCDE_KOL_2';
 
 n = numel(dimension);
+
+f = cell(100, 1);
 for i=1:4,
     flag = true;
     options = [];
     options.percent = percent_(i);
+    
+    idx = options.percent * 100;
+    f{idx} = zeros(n, 1);
     
     for j=1:n,
         options.dimension = dimension(j);
@@ -20,16 +25,15 @@ for i=1:4,
         if flag,
             flag = false;
             R = exp_acmmm(X, L, options);
+            f{i}(j) = R.f;
             R.f
-            options.train = R.train.raw;
-            options.test = R.test.raw;
-            options.train_label = R.train.label;
-            options.test_label = R.test.label;
-            options.train_logical = R.train.logical;
-            options.test_logical = R.test.logical;
+            options.train = R.train;
+            options.test = R.test;
+            options.W = R.W;
             continue;
         end
         R = exp_acmmm(X, L, options);
+        f{i}(j) = R.f;
         R.f
     end
 end

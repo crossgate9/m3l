@@ -30,14 +30,15 @@ end
 R = [];
 
 %% feature extraction
+fprintf('feature extraction ... \n');
 if isfield(para, 'train') && isfield(para, 'test'),
     % load existed data
-    train = para.train;
-    test = para.test;
-    train_label = para.train_label;
-    test_label = para.test_label;
-    train_logical = para.train_logical;
-    test_logical = para.test_logical;
+    train = para.train.raw;
+    test = para.test.raw;
+    train_label = para.train.label;
+    test_label = para.test.label;
+    train_logical = para.train.logical;
+    test_logical = para.test.logical;
     V = length(train);
 else
     % re-construct data
@@ -86,7 +87,7 @@ else
         train_logical = para.train_logical;
         test_logical = para.test_logical;
     end
-
+    
     train_count = sum(train_logical);
     test_count = sum(test_logical);
 
@@ -149,6 +150,9 @@ else
 end
 %% main
 
+fprintf('%d %d\n', sum(train_label), sum(test_label));
+
+fprintf('data normalization ... \n');
 % transport & normalization
 train_normalized = cell(V, 1);
 test_normalized = cell(V, 1);
@@ -159,14 +163,19 @@ for i = 1:V,
 %     test_normalized{i} = test_normalized{i}';
 end
 
-options = [];
-options.distance = 'euclidean';
-options.sigma = MCDE_sigma(train_normalized, 10, options);
+fprintf('dimension reduction & normalization ... \n');
+if isfield(para, 'W'),
+    W = para.W;
+else
+    options = [];
+    options.distance = 'euclidean';
+    options.sigma = MCDE_sigma(train_normalized, 10, options);
 
-% reduced weight matrix
-W = [];
-expr = sprintf('W = %s(train_normalized, train_label, options);', para.drfun);
-eval(expr);
+    % reduced weight matrix
+    W = [];
+    expr = sprintf('W = %s(train_normalized, train_label, options);', para.drfun);
+    eval(expr);
+end
 
 train_reduced = cell(V, 1);
 test_reduced = cell(V, 1);
@@ -179,7 +188,6 @@ for i = 1:V,
         normalize_train_test(train_reduced{i}, test_reduced{i});
 end
 
-% svm
 train_data = train_reduced_normalized{1};
 test_data = test_reduced_normalized{1};
 for i = 2:V,
@@ -188,11 +196,13 @@ for i = 2:V,
 end
 
 % k-NN
+fprintf('knn ... \n');
 mdl = fitcknn(train_data, train_label, 'NumNeighbors', para.knn);
 predicts = mdl.predict(test_data);
 
 f = fscore(test_label, predicts, 1);
 
+fprintf('output ... \n');
 R.f = f;
 R.annotations = test_label;
 R.predicts = predicts;
@@ -204,7 +214,7 @@ R.train.data = train_data;
 R.train.label = train_label;
 
 R.test = [];
-R.test.logical = train_logical;
+R.test.logical = test_logical;
 R.test.raw = test;
 R.test.data = test_data;
 R.test.label = test_label;
