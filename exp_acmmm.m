@@ -14,6 +14,7 @@ end
 if ~isfield(para, 'dimension')
     para.dimension = 10;
 end
+para.ReducedDim = para.dimension;
 
 if ~isfield(para, 'knn'),
     para.knn = 1;
@@ -30,15 +31,23 @@ end
 R = [];
 
 %% feature extraction
-fprintf('feature extraction ... \n');
+if isfield(para, 'verbose'),
+    fprintf('feature extraction ... \n');
+end
+
 if isfield(para, 'train') && isfield(para, 'test'),
     % load existed data
     train = para.train.raw;
     test = para.test.raw;
     train_label = para.train.label;
     test_label = para.test.label;
-    train_logical = para.train.logical;
-    test_logical = para.test.logical;
+    if isfield(para.train, 'logical') && isfield(para.test, 'logical'),
+        train_logical = para.train.logical;
+        test_logical = para.test.logical;
+    else
+        train_logical = [];
+        test_logical = [];
+    end
     V = length(train);
 else
     % re-construct data
@@ -150,9 +159,10 @@ else
 end
 %% main
 
-fprintf('%d %d\n', sum(train_label), sum(test_label));
+if isfield(para, 'verbose'),
+    fprintf('data normalization ... \n');
+end
 
-fprintf('data normalization ... \n');
 % transport & normalization
 train_normalized = cell(V, 1);
 test_normalized = cell(V, 1);
@@ -163,13 +173,18 @@ for i = 1:V,
 %     test_normalized{i} = test_normalized{i}';
 end
 
-fprintf('dimension reduction & normalization ... \n');
+if isfield(para, 'verbose'),
+    fprintf('dimension reduction & normalization ... \n');
+end
+
 if isfield(para, 'W'),
     W = para.W;
 else
     options = [];
     options.distance = 'euclidean';
     options.sigma = MCDE_sigma(train_normalized, 10, options);
+    % for PCA or LPP
+    options.ReducedDim = para.ReducedDim;
 
     % reduced weight matrix
     W = [];
@@ -177,32 +192,48 @@ else
     eval(expr);
 end
 
-train_reduced = cell(V, 1);
-test_reduced = cell(V, 1);
-train_reduced_normalized = cell(V, 1);
-test_reduced_normalized = cell(V, 1);
-for i = 1:V,
-    train_reduced{i} = train_normalized{i}' * W{i}(:, 1:para.dimension);
-    test_reduced{i} = test_normalized{i}' * W{i}(:, 1:para.dimension);
-    [train_reduced_normalized{i}, test_reduced_normalized{i}] = ...
-        normalize_train_test(train_reduced{i}, test_reduced{i});
-end
+if iscell(W),
+    % multi view weight matrix
+    train_reduced = cell(V, 1);
+    test_reduced = cell(V, 1);
+    train_reduced_normalized = cell(V, 1);
+    test_reduced_normalized = cell(V, 1);
+    for i = 1:V,
+        train_reduced{i} = train_normalized{i}' * W{i}(:, 1:para.dimension);
+        test_reduced{i} = test_normalized{i}' * W{i}(:, 1:para.dimension);
+        [train_reduced_normalized{i}, test_reduced_normalized{i}] = ...
+            normalize_train_test(train_reduced{i}, test_reduced{i});
+    end
 
-train_data = train_reduced_normalized{1};
-test_data = test_reduced_normalized{1};
-for i = 2:V,
-    train_data = [train_data train_reduced_normalized{i}];
-    test_data = [test_data test_reduced_normalized{i}];
+    train_data = train_reduced_normalized{1};
+    test_data = test_reduced_normalized{1};
+    for i = 2:V,
+        train_data = [train_data train_reduced_normalized{i}];
+        test_data = [test_data test_reduced_normalized{i}];
+    end
+else
+    % pca-like weight matrix
+    train_data = merge_views(train_normalized, train_label);
+    test_data = merge_views(test_normalized, test_label);
+    train_reduced = train_data * W;
+    test_reduced = test_data * W;
+    [train_data, test_data] = normalize_train_test(train_reduced, test_reduced);
 end
 
 % k-NN
-fprintf('knn ... \n');
+if isfield(para, 'verbose'),
+    fprintf('knn ... \n');
+end
+
 mdl = fitcknn(train_data, train_label, 'NumNeighbors', para.knn);
 predicts = mdl.predict(test_data);
 
 f = fscore(test_label, predicts, 1);
 
-fprintf('output ... \n');
+if isfield(para, 'verbose'),
+    fprintf('output ... \n');
+end
+
 R.f = f;
 R.annotations = test_label;
 R.predicts = predicts;

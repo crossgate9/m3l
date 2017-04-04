@@ -57,7 +57,7 @@ S_g = cell(1, V); % Globality Matrix
 NG_sum = zeros(n,n);
 for v = 1:V 
     NG = L2_distance(X{v}, X{v}, 1);
-    NG = - (NG .* NG) / (2 * para.sigma);
+    NG = - (NG .* NG) / (2 * para.sigma(v));
     N{v} = exp(NG);
 
 %     S_l{v} = zeros(size(X{v},1), size(X{v},1));
