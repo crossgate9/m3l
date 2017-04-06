@@ -17,7 +17,8 @@ n = size(X{1}, 2);
 
 sigma = zeros(v, 1);
 for i=1:v,
-    D = pdist2(X{i}', X{i}', para.distance);
+%     D = pdist2(X{i}', X{i}', para.distance);
+    D = EuDist2(X{i}', X{i}');
     D = sort(D, 2);
     if k+1 > size(D, 1),
         k = size(D, 1) - 1;
