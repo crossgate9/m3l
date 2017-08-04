@@ -1,4 +1,4 @@
-function W = MCDE_KOL_3(X,L,para)
+function [W, eigvector, eigvalue] = BMCDE(X,L,para)
 % function W = MCDE_KOL_3(X,L,para)
 % Modality-Consistent Discriminant Embedding for Key Opinion Leader (KOL)
 % Indentification
@@ -133,14 +133,39 @@ M_Max = Q_D; % scatter matrix to be maximized
 M_Min = Q_A + para.alpha*S_L + para.beta*C_big; % scatter matrix to be minimized
 
 %% Analytical Solution %%
-[eigvector,eigvalue] = eig(M_Max,M_Min); %generalized eigendecomposition
-[value index] = sort(diag(eigvalue),'descend'); % sort according to the scales of eigenvalues
-eigvector_sort = eigvector(:,index); % rank the eigenvectors accroding to the eigenvalue sorting
-W_matrix = eigvector_sort(:, value>0); % only select the eigenvectors with positive eigenvalues
+N = size(M_Max, 1);
+lapack_output = ...
+    lapack('DGGEV', ...
+        'V', 'V', N, M_Max, N, M_Min, N, ...
+        zeros(N,1), zeros(N,1), zeros(N,1), ...
+        zeros(N), N, zeros(N), N, zeros(N), 8*N, 0);
+    
+% generalized eigendecomposition
+% with matlab
+% [eigvector,eigvalue] = eig(M_Max,M_Min); 
+% [value index] = sort(diag(eigvalue),'descend'); % sort according to the scales of eigenvalues
+% eigvector_sort = eigvector(:,index); % rank the eigenvectors accroding to the eigenvalue sorting
+% only select the eigenvectors with positive eigenvalues
+% this statement will also eliminate NaN and Inf eigenvalues
+% W_matrix = eigvector_sort(:, (value>0) & (1 - isinf(value))); 
+
+alphar = lapack_output{8};
+% alphal = lapack_output{9};
+beta = lapack_output{10};
+valid_beta = beta ~= 0;
+
+eigvalue = zeros(N, 1);
+eigvalue(valid_beta) = alphar(valid_beta) ./ beta(valid_beta);
+% eigvector = lapack_output{11};
+eigvector = lapack_output{13};
+
+[value, index] = sort(eigvalue, 'descend');
+eigvector_sort = eigvector(:, index);
+W_matrix = eigvector_sort(:, value > 0);
 
 % divide W_matrix to V matrices for different views
-Dim_V = [];
+Dim_V = zeros(V, 1);
 for v = 1:V
-    Dim_V = [Dim_V size(X{v},1)];
+    Dim_V(v) = size(X{v}, 1);
 end
 W = mat2cell(W_matrix, Dim_V); 

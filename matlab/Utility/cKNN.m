@@ -1,8 +1,12 @@
-function [predicts] = cKNN(train_features, train_label, test_features)
+function [predicts] = cKNN(train_features, train_label, test_features, k)
 
 %% check parameters
 if nargin < 3,
     error('not enough parameters');
+end
+
+if nargin == 3,
+    k = 1;
 end
 
 train_sz = size(train_features);
@@ -21,8 +25,8 @@ end
 MV = version('-release');
 
 if strcmp(MV, '2009a') || strcmp(MV, '2013a'),
-    predicts = knnclassify(test_features, train_features, train_label, 1);
+    predicts = knnclassify(test_features, train_features, train_label, k);
 else
-    mdl = fitcknn(train_features, train_label, 'NumNeighbors', 1);
+    mdl = fitcknn(train_features, train_label, 'NumNeighbors', k);
     predicts = mdl.predict(test_features);
 end
